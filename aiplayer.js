@@ -2,12 +2,13 @@ import { GoogleGenAI } from "@google/genai";
 import { Type } from "@google/genai";
 const apiButton = document.getElementById('set-api-key-button');
 const apiInput = document.getElementById('api-key-input');
+let ai = null;
 
 apiButton.addEventListener('click', () => {
     const apiKey = apiInput.value;
     if (apiKey) {
         try {
-            const ai = initializeAI(apiKey);
+            ai = initializeAI(apiKey);
         } catch (error) {
             alert('Error initializing AI: ' + error.message);
             return;
