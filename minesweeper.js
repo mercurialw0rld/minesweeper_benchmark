@@ -1,19 +1,36 @@
+import { aiPlay } from './aiplayer.js';
+
 const cell = document.createElement('button');
 const gridContainer = document.getElementById('minesweeper-grid');
 let isFlagged = false;
 let isOpened = false;
 let hasWon = false;
 let hasLost = false;
+let aiAutoplayActive = false;
+const AI_MOVE_DELAY_MS = 500;
 let size = 9;
 let numMines = 10;
+const aiPlayButton = document.getElementById('ai-play-button')
 const newGameButton = document.getElementById('new-game-button')
 const difficultySelect = document.getElementById('difficulty-select')
 const setDifficultyButton = document.getElementById('set-difficulty-button')
+const aiButtonDefaultLabel = 'AI Play'
+const timerDisplay = document.getElementById('timer-display')
+const statsRows = document.getElementById('stats-rows')
+const statsKey = 'minesweeperStats'
+const difficulties = ['easy', 'medium', 'hard']
+let timerStart = 0;
+let timerIntervalId = null;
+let timerRunning = false;
+let lastElapsedMs = 0;
+let currentPlayer = 'user';
+let stats = loadStats();
 
 // Set initial CSS grid variables
 document.documentElement.style.setProperty('--grid-cols', size);
 document.documentElement.style.setProperty('--grid-rows', size);
 
+aiPlayButton.addEventListener('click', () => startAiAutoplay());
 
 setDifficultyButton.addEventListener('click', () => {
     const difficulty = difficultySelect.value;
@@ -74,11 +91,19 @@ async function plantMines(numMines, size) {
 async function newGame() {
     isFlagged = false;
     isOpened = false;
+    hasWon = false;
+    hasLost = false;
+    aiAutoplayActive = false;
+    setAiThinking(false);
+    currentPlayer = 'user';
+    stopTimer(true);
     await renderGrid(size);
     await plantMines(numMines, size);
 }
 
 async function handleCellClick(row, col){
+    if (!timerRunning) startTimer();
+    if (!aiAutoplayActive) currentPlayer = 'user';
     const cell = gridContainer.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
     if (!cell) return;
     console.log(`Click en celda ${row}${col}`)
@@ -89,6 +114,7 @@ async function handleCellClick(row, col){
             alert('Game Over! You hit a mine.');
         }, 100);
         hasLost = true;
+        finalizeGame('loss');
         return;
     }
     await checkWinCondition();
@@ -164,6 +190,7 @@ async function checkWinCondition() {
         hasWon = true;
         alert('You Win!');
         openEverything();
+        finalizeGame('win');
     }
 }
 
@@ -178,4 +205,200 @@ async function openEverything() {
         cell.classList.add('opened');
     });
 }
+
+async function getBoardState() {
+    const boardState = [];
+    for (let row = 0; row < size; row++) {
+        const rowState = [];
+        for (let col = 0; col < size; col++) {
+            const cell = gridContainer.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+            if (cell.dataset.flagged === 'true') {
+                rowState.push('F');
+            } else if (cell.dataset.opened === 'false') {
+                rowState.push('E');
+            } else if (cell.dataset.opened  === 'true' && cell.dataset.hasMine === 'false') {
+                const adjacent = parseInt(cell.dataset.adjacent);
+                rowState.push(adjacent === 0 ? 'O' : adjacent);
+            } else {
+                rowState.push('E');
+            }
+        }
+        boardState.push(rowState);
+    }
+    return boardState;
+}
+
+async function aiMakeMove() {
+    if (hasWon || hasLost) return false;
+    if (!timerRunning) startTimer();
+    const boardState = await getBoardState();
+    const move = await aiPlay(boardState);
+    if (move.decision === 'O') {
+        await handleCellClick(move.row, move.col);
+    } else if (move.decision === 'F') {
+        await handleCellRightClick(move.row, move.col, new MouseEvent('contextmenu'));
+    }
+    return true;
+}
+
+function startAiAutoplay() {
+    if (aiAutoplayActive) return;
+    aiAutoplayActive = true;
+    currentPlayer = 'ai';
+    const tick = async () => {
+        if (!aiAutoplayActive || hasWon || hasLost) {
+            aiAutoplayActive = false;
+            setAiThinking(false);
+            return;
+        }
+        try {
+            setAiThinking(true);
+            await aiMakeMove();
+        } catch (err) {
+            console.error('AI autoplay stopped due to error:', err);
+            aiAutoplayActive = false;
+            setAiThinking(false);
+            return;
+        }
+        setAiThinking(false);
+        setTimeout(tick, AI_MOVE_DELAY_MS);
+    };
+    setTimeout(tick, AI_MOVE_DELAY_MS);
+}
+
+function setAiThinking(isThinking) {
+    if (isThinking) {
+        aiPlayButton.textContent = 'Thinking...';
+    } else if (aiAutoplayActive) {
+        aiPlayButton.textContent = 'AI Playing';
+    } else {
+        aiPlayButton.textContent = aiButtonDefaultLabel;
+    }
+}
+
+function startTimer() {
+    timerStart = performance.now();
+    timerRunning = true;
+    timerIntervalId = setInterval(updateTimerDisplay, 200);
+}
+
+function stopTimer(resetDisplay = false) {
+    if (timerIntervalId) {
+        clearInterval(timerIntervalId);
+        timerIntervalId = null;
+    }
+    if (timerRunning) {
+        lastElapsedMs = performance.now() - timerStart;
+    }
+    timerRunning = false;
+    if (resetDisplay) {
+        timerDisplay.textContent = '00:00';
+    } else {
+        updateTimerDisplay(true);
+    }
+}
+
+function updateTimerDisplay(force = false) {
+    if (!timerRunning && !force) return;
+    const elapsed = timerRunning ? performance.now() - timerStart : lastElapsedMs;
+    const minutes = Math.floor(elapsed / 60000).toString().padStart(2, '0');
+    const seconds = Math.floor((elapsed % 60000) / 1000).toString().padStart(2, '0');
+    timerDisplay.textContent = `${minutes}:${seconds}`;
+}
+
+function finalizeGame(outcome) {
+    stopTimer();
+    aiAutoplayActive = false;
+    setAiThinking(false);
+    const elapsed = lastElapsedMs;
+    recordResult(currentPlayer, difficultySelect.value, outcome, elapsed);
+}
+
+function defaultStats() {
+    const base = {};
+    difficulties.forEach(d => {
+        base[d] = { wins: 0, losses: 0, games: 0, totalTimeMs: 0 };
+    });
+    return { user: JSON.parse(JSON.stringify(base)), ai: JSON.parse(JSON.stringify(base)) };
+}
+
+function loadStats() {
+    try {
+        const raw = localStorage.getItem(statsKey);
+        if (!raw) return defaultStats();
+        const parsed = JSON.parse(raw);
+        return parsed;
+    } catch (err) {
+        console.error('Failed to load stats, resetting.', err);
+        return defaultStats();
+    }
+}
+
+function saveStats() {
+    try {
+        localStorage.setItem(statsKey, JSON.stringify(stats));
+    } catch (err) {
+        console.error('Failed to save stats.', err);
+    }
+}
+
+function recordResult(actor, difficulty, outcome, elapsedMs) {
+    const bucket = stats[actor][difficulty];
+    if (outcome === 'win') bucket.wins += 1; else bucket.losses += 1;
+    bucket.games += 1;
+    bucket.totalTimeMs += elapsedMs;
+    saveStats();
+    updateStatsUI();
+}
+
+function averageTime(bucket) {
+    if (bucket.games === 0) return 0;
+    return bucket.totalTimeMs / bucket.games;
+}
+
+function updateStatsUI() {
+    const rows = [];
+    difficulties.forEach(difficulty => {
+        const user = stats.user[difficulty];
+        const ai = stats.ai[difficulty];
+        const userTotal = user.wins + user.losses;
+        const aiTotal = ai.wins + ai.losses;
+        const maxTotal = Math.max(userTotal, aiTotal, 1);
+        const userWinWidth = userTotal ? (user.wins / maxTotal) * 100 : 0;
+        const userLossWidth = userTotal ? (user.losses / maxTotal) * 100 : 0;
+        const aiWinWidth = aiTotal ? (ai.wins / maxTotal) * 100 : 0;
+        const aiLossWidth = aiTotal ? (ai.losses / maxTotal) * 100 : 0;
+        const userAvg = averageTime(user);
+        const aiAvg = averageTime(ai);
+        rows.push(`
+            <div class="stats-row">
+                <div class="stats-difficulty">${difficulty}</div>
+                <div class="stats-bars">
+                    <div class="bar-track">
+                        <div class="bar-fill user-win" style="width:${userWinWidth}%;">W ${user.wins}</div>
+                        <div class="bar-fill user-loss" style="left:${userWinWidth}%; width:${userLossWidth}%;">L ${user.losses}</div>
+                    </div>
+                    <div class="bar-track">
+                        <div class="bar-fill ai-win" style="width:${aiWinWidth}%;">W ${ai.wins}</div>
+                        <div class="bar-fill ai-loss" style="left:${aiWinWidth}%; width:${aiLossWidth}%;">L ${ai.losses}</div>
+                    </div>
+                </div>
+                <div class="stats-meta">
+                    <span>User avg: ${formatMs(userAvg)}</span>
+                    <span>AI avg: ${formatMs(aiAvg)}</span>
+                </div>
+            </div>
+        `);
+    });
+    statsRows.innerHTML = rows.join('');
+}
+
+function formatMs(ms) {
+    if (!ms) return '00:00';
+    const minutes = Math.floor(ms / 60000).toString().padStart(2, '0');
+    const seconds = Math.floor((ms % 60000) / 1000).toString().padStart(2, '0');
+    return `${minutes}:${seconds}`;
+}
+
+updateStatsUI();
 

@@ -13,6 +13,10 @@
         <div id="minesweeper-container">
             <div id="minesweeper-buttons">
                 <button id="new-game-button">New Game</button>
+                <div class="api-key-group">
+                    <input type="text" id="api-key-input" placeholder="Enter API Key">
+                    <button id="set-api-key-button">Set API Key</button>
+                </div>
                 <form id="difficulty-form">
                     <label for="difficulty-select">Difficulty:</label>
                     <select id="difficulty-select">
@@ -22,11 +26,31 @@
                     </select>
                 </form>
                 <button id="set-difficulty-button">Set Difficulty</button>
+                <button id="ai-play-button">AI Play</button>
+            </div>
+            <div id="hud">
+                <div id="timer-display">00:00</div>
             </div>
             <div id="minesweeper-grid">
             </div>
-
+            <section id="stats-panel">
+                <h2>Game Stats</h2>
+                <div class="stats-legend">
+                    <span class="legend user-win">User Win</span>
+                    <span class="legend user-loss">User Loss</span>
+                    <span class="legend ai-win">AI Win</span>
+                    <span class="legend ai-loss">AI Loss</span>
+                </div>
+                <div id="stats-rows"></div>
+            </section>
         </div>
-        <script src="minesweeper.js"></script>
+        <script type="importmap">
+            {
+                "imports": {
+                    "@google/genai": "https://esm.sh/@google/genai"
+                }
+            }
+        </script>
+        <script src="minesweeper.js" type="module"></script>
     </body>
 </html>
