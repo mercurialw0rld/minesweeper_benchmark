@@ -7,7 +7,7 @@ apiButton.addEventListener('click', () => {
     const apiKey = apiInput.value;
     if (apiKey) {
         try {
-            initializeAI(apiKey);
+            const ai = initializeAI(apiKey);
         } catch (error) {
             alert('Error initializing AI: ' + error.message);
             return;
