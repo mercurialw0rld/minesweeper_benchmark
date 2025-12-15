@@ -2,9 +2,36 @@ const cell = document.createElement('button');
 const gridContainer = document.getElementById('minesweeper-grid');
 let isFlagged = false;
 let isOpened = false;
+let hasWon = false;
+let hasLost = false;
+let size = 9;
+let numMines = 10;
 const newGameButton = document.getElementById('new-game-button')
-const size = 9;
-const numMines = 10;
+const difficultySelect = document.getElementById('difficulty-select')
+const setDifficultyButton = document.getElementById('set-difficulty-button')
+
+// Set initial CSS grid variables
+document.documentElement.style.setProperty('--grid-cols', size);
+document.documentElement.style.setProperty('--grid-rows', size);
+
+
+setDifficultyButton.addEventListener('click', () => {
+    const difficulty = difficultySelect.value;
+    if (difficulty === 'easy') {
+        size = 8;
+        numMines = 10;
+    } else if (difficulty === 'medium') {
+        size = 16;
+        numMines = 40;
+    } else if (difficulty === 'hard') {
+        size = 24;
+        numMines = 99;
+    }
+    // Update CSS grid variables
+    document.documentElement.style.setProperty('--grid-cols', size);
+    document.documentElement.style.setProperty('--grid-rows', size);
+    newGame();
+})
 
 newGameButton.addEventListener('click', () => newGame())
 
@@ -56,6 +83,15 @@ async function handleCellClick(row, col){
     if (!cell) return;
     console.log(`Click en celda ${row}${col}`)
     await openCell(row, col);
+    if (cell.dataset.hasMine === 'true') {
+        await openEverything();
+        setTimeout(() => {
+            alert('Game Over! You hit a mine.');
+        }, 100);
+        hasLost = true;
+        return;
+    }
+    await checkWinCondition();
 }
 
 async function handleCellRightClick(row, col, event) {
@@ -115,3 +151,31 @@ async function openAdjacents(row, col) {
         }
     }
 }
+
+async function checkWinCondition() {
+    const cells = gridContainer.querySelectorAll('.cell');
+    let openedCells = 0;
+    cells.forEach(cell => {
+        if ((cell.dataset.opened === 'true' && (cell.dataset.hasMine === 'false' || cell.dataset.flagged === 'true'))) {
+            openedCells += 1;
+        }
+    });
+    if (openedCells === size * size - numMines) {
+        hasWon = true;
+        alert('You Win!');
+        openEverything();
+    }
+}
+
+
+async function openEverything() {
+    const cells = gridContainer.querySelectorAll('.cell');
+    cells.forEach(cell => {
+        if (cell.dataset.hasMine === 'true') {
+            cell.classList.add('mine-opened');
+        }
+        cell.dataset.opened = 'true';
+        cell.classList.add('opened');
+    });
+}
+
