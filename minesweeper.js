@@ -232,13 +232,27 @@ async function aiMakeMove() {
     if (hasWon || hasLost) return false;
     if (!timerRunning) startTimer();
     const boardState = await getBoardState();
-    const move = await aiPlay(boardState);
-    if (move.decision === 'O') {
-        await handleCellClick(move.row, move.col);
-    } else if (move.decision === 'F') {
-        await handleCellRightClick(move.row, move.col, new MouseEvent('contextmenu'));
+    const result = await aiPlay(boardState);
+    const moves = normalizeMoves(result);
+    for (const move of moves) {
+        if (hasWon || hasLost) break;
+        if (move.decision === 'O') {
+            await handleCellClick(move.row, move.col);
+        } else if (move.decision === 'F') {
+            await handleCellRightClick(move.row, move.col, new MouseEvent('contextmenu'));
+        }
     }
     return true;
+}
+
+function normalizeMoves(result) {
+    if (!result) return [];
+    if (Array.isArray(result.moves)) return result.moves;
+    // Backward compatibility: if single move fields are returned
+    if (result.decision !== undefined && result.row !== undefined && result.col !== undefined) {
+        return [{ decision: result.decision, row: result.row, col: result.col }];
+    }
+    return [];
 }
 
 function startAiAutoplay() {

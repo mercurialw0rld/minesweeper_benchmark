@@ -28,7 +28,7 @@ function initializeAI(apiKey) {
 export async function aiPlay(state) {
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
-    contents: "You're an AI that plays Minesweeper. Given the current state of the board, provide the next best move (Just say F for flagging a cell, O for opening a cell). The board state is represented as a 2D array where 'E' is an empty closed cell, 'F' is a flagged cell, numbers represent the count of adjacent mines for opened cells, and 'O' represents an opened safe cell with no adjacents. Here is the current board state:\n" + JSON.stringify(state),
+  contents: "You're an AI that plays Minesweeper. Given the current state of the board, provide a batch of the next best moves (each with decision 'F' or 'O' plus row/col). The board state is represented as a 2D array where 'E' is an empty closed cell, 'F' is a flagged cell, numbers represent the count of adjacent mines for opened cells, and 'O' represents an opened safe cell with no adjacents. Respond with up to one or more moves that can be applied in order without human intervention. Here is the current board state:\n" + JSON.stringify(state),
     config: {
         tools: [{
             functionDeclarations: [actionMineDeclaration]
@@ -52,21 +52,31 @@ const actionMineDeclaration = {
   parameters: {
     type: Type.OBJECT,
     properties: {
-      decision: {
-        type: Type.STRING,
-        enum: ['F', 'O'],
-        description: 'The action to take: F for flagging a cell, O for opening a cell.',
-      },
-      row: {
-        type: Type.INTEGER,
-        description: 'The row index of the cell to act upon.',
-      },
-      col: {
-        type: Type.INTEGER,
-        description: 'The column index of the cell to act upon.',
+      moves: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            decision: {
+              type: Type.STRING,
+              enum: ['F', 'O'],
+              description: 'The action to take: F for flagging a cell, O for opening a cell.',
+            },
+            row: {
+              type: Type.INTEGER,
+              description: 'The row index of the cell to act upon.',
+            },
+            col: {
+              type: Type.INTEGER,
+              description: 'The column index of the cell to act upon.',
+            },
+          },
+          required: ['decision', 'row', 'col'],
+        },
+        description: 'Ordered list of moves to apply sequentially without user input.',
       },
     },
-    required: ['decision', 'row', 'col'],
+    required: ['moves'],
   },
 }
 
