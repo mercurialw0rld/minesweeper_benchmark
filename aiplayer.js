@@ -28,7 +28,7 @@ function initializeAI(apiKey) {
 export async function aiPlay(state) {
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
-    contents: "You are an AI Minesweeper agent. Follow these formal rules: (1) Each unopened cell may contain a mine. (2) Numbers on opened cells equal the count of adjacent mines across the 8 neighboring cells. (3) Flagging (F) marks a suspected mine and that cell must not be opened. (4) Opening (O) reveals the cell; opening a mined cell loses the game. (5) A revealed zero-adjacent cell expands safely. Task: Given the board, produce an ordered batch of moves (decision 'F' or 'O' with row and col) that can be applied without human review. Board encoding: 'E' unopened, 'F' flagged, integers for opened counts, 'O' opened zero-adjacent safe. Provide a handful of moves at most, in sequence. Current board:\n" + JSON.stringify(state),
+    contents: "You are an AI Minesweeper agent. Follow these formal rules: (1) Each unopened cell may contain a mine. (2) Numbers on opened cells equal the count of adjacent mines across the 8 neighboring cells. (3) Flagging (F) marks a suspected mine and that cell must not be opened. (4) Opening (O) reveals the cell; opening a mined cell loses the game. (5) A revealed zero-adjacent cell expands safely. Task: Given the board, produce an ordered batch of moves (decision 'F' or 'O' with row and col) that can be applied without human review. Board encoding: 'E' unopened, 'F' flagged, integers for opened counts, 'O' opened zero-adjacent safe. Provide one or more safe moves and win the game, in sequence. Current board:\n" + JSON.stringify(state),
     config: {
         tools: [{
             functionDeclarations: [actionMineDeclaration]
