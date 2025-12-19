@@ -27,7 +27,7 @@ function initializeAI(apiKey) {
 
 export async function aiPlay(state) {
   const response = await ai.models.generateContent({
-    model: "gemini-3-pro-preview",
+    model: "gemini-3-flash-preview",
     contents: `Current board state:
     ${boardToText(state)} 
 
