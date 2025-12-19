@@ -27,8 +27,17 @@ function initializeAI(apiKey) {
 
 export async function aiPlay(state) {
   const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: "You are an AI Minesweeper agent. Follow these formal rules: (1) Each unopened cell may contain a mine. (2) Numbers on opened cells equal the count of adjacent mines across the 8 neighboring cells. (3) Flagging (F) marks a suspected mine and that cell must not be opened. (4) Opening (O) reveals the cell; opening a mined cell loses the game. (5) A revealed zero-adjacent cell expands safely. Task: Given the board, produce an ordered batch of moves (decision 'F' or 'O' with row and col) that can be applied without human review. Board encoding: 'E' unopened, 'F' flagged, integers for opened counts, 'O' opened zero-adjacent safe. Provide one or more safe moves and win the game, in sequence. Current board:\n" + JSON.stringify(state),
+    model: "gemini-3-pro-preview",
+    contents: `Current board state:
+    ${boardToText(state)} 
+
+    INSTRUCTIONS:
+    1. Analyze each number on the board.
+    2. For each number, count the surrounding 'E' (unopened) and 'F' (flags).
+    3. Deduce logically: 
+      - If (number) == (unopened + flags), then all unopened are mines (F).
+      - If (number) == (flags), then all unopened are safe (O).
+    4. Think step-by-step and then call 'action_mine' with your moves.`,
     config: {
         tools: [{
             functionDeclarations: [actionMineDeclaration]
