@@ -54,7 +54,11 @@ export async function aiPlay(state) {
 
 }
 
-
+function boardToText(state) {
+  return state.map((row, i) => 
+    `Row ${i}: ` + row.join(' ')
+  ).join('\n');
+} 
 const actionMineDeclaration = {
   name: 'action_mine',
   description: 'Gives and executes the play decided by the LLM.',
