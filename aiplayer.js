@@ -26,6 +26,10 @@ function initializeAI(apiKey) {
 }
 
 export async function aiPlay(state) {
+  if (!ai) {
+    throw new Error('Set API Key before starting AI Play.');
+  }
+
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: `Current board state:
@@ -37,7 +41,9 @@ export async function aiPlay(state) {
     3. Deduce logically: 
       - If (number) == (unopened + flags), then all unopened are mines (F).
       - If (number) == (flags), then all unopened are safe (O).
-    4. Think step-by-step and then call 'action_mine' with your moves.`,
+    4. Return 2-4 concise reasoning steps in 'reasoningSteps'.
+    5. Return a one-line 'planSummary'.
+    6. Then call 'action_mine' with your moves.`,
     config: {
         tools: [{
             functionDeclarations: [actionMineDeclaration]
@@ -87,6 +93,17 @@ const actionMineDeclaration = {
           required: ['decision', 'row', 'col'],
         },
         description: 'Ordered list of moves to apply sequentially without user input.',
+      },
+      reasoningSteps: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.STRING,
+        },
+        description: '2 to 4 short reasoning steps used to justify the selected moves.',
+      },
+      planSummary: {
+        type: Type.STRING,
+        description: 'One concise sentence summarizing the move strategy for this turn.',
       },
     },
     required: ['moves'],

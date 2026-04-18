@@ -4,46 +4,64 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Minesweeper</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="minesweeper.css">
 
     </head>
     <body>
-        <h1> Minesweeper </h1>
+        <div class="aurora-bg"></div>
+        <main class="app-shell">
+            <header class="hero">
+                <h1>Minesweeper Benchmark</h1>
+                <p class="hero-subtitle">Classic logic, upgraded UI, and live AI reasoning trace.</p>
+            </header>
 
-        <div id="minesweeper-container">
-            <div id="minesweeper-buttons">
-                <button id="new-game-button">New Game</button>
-                <div class="api-key-group">
-                    <input type="text" id="api-key-input" placeholder="Enter API Key">
-                    <button id="set-api-key-button">Set API Key</button>
-                </div>
-                <form id="difficulty-form">
-                    <label for="difficulty-select">Difficulty:</label>
-                    <select id="difficulty-select">
-                        <option value="easy">Easy</option>
-                        <option value="medium">Medium</option>
-                        <option value="hard">Hard</option>
-                    </select>
-                </form>
-                <button id="set-difficulty-button">Set Difficulty</button>
-                <button id="ai-play-button">AI Play</button>
+            <div class="workspace-grid">
+                <section id="minesweeper-container">
+                    <div id="minesweeper-buttons">
+                        <button id="new-game-button">New Game</button>
+                        <div class="api-key-group">
+                            <input type="text" id="api-key-input" placeholder="Enter API Key">
+                            <button id="set-api-key-button">Set API Key</button>
+                        </div>
+                        <form id="difficulty-form">
+                            <label for="difficulty-select">Difficulty:</label>
+                            <select id="difficulty-select">
+                                <option value="easy">Easy</option>
+                                <option value="medium">Medium</option>
+                                <option value="hard">Hard</option>
+                            </select>
+                        </form>
+                        <button id="set-difficulty-button">Set Difficulty</button>
+                        <button id="ai-play-button">AI Play</button>
+                    </div>
+
+                    <div id="hud">
+                        <div id="timer-display">00:00</div>
+                    </div>
+                    <div id="minesweeper-grid"></div>
+
+                    <section id="stats-panel">
+                        <h2>Game Stats</h2>
+                        <div class="stats-legend">
+                            <span class="legend user-win">User Win</span>
+                            <span class="legend user-loss">User Loss</span>
+                            <span class="legend ai-win">AI Win</span>
+                            <span class="legend ai-loss">AI Loss</span>
+                        </div>
+                        <div id="stats-rows"></div>
+                    </section>
+                </section>
+
+                <aside id="llm-reasoning-panel">
+                    <h2>LLM Reasoning</h2>
+                    <p id="llm-reasoning-status">Idle. Start AI Play to see its decision trail.</p>
+                    <ol id="llm-reasoning-list"></ol>
+                </aside>
             </div>
-            <div id="hud">
-                <div id="timer-display">00:00</div>
-            </div>
-            <div id="minesweeper-grid">
-            </div>
-            <section id="stats-panel">
-                <h2>Game Stats</h2>
-                <div class="stats-legend">
-                    <span class="legend user-win">User Win</span>
-                    <span class="legend user-loss">User Loss</span>
-                    <span class="legend ai-win">AI Win</span>
-                    <span class="legend ai-loss">AI Loss</span>
-                </div>
-                <div id="stats-rows"></div>
-            </section>
-        </div>
+        </main>
         <script type="importmap">
             {
                 "imports": {

@@ -17,14 +17,18 @@ const setDifficultyButton = document.getElementById('set-difficulty-button')
 const aiButtonDefaultLabel = 'AI Play'
 const timerDisplay = document.getElementById('timer-display')
 const statsRows = document.getElementById('stats-rows')
+const reasoningStatus = document.getElementById('llm-reasoning-status')
+const reasoningList = document.getElementById('llm-reasoning-list')
 const statsKey = 'minesweeperStats'
 const difficulties = ['easy', 'medium', 'hard']
+const MAX_REASONING_LINES = 14
 let timerStart = 0;
 let timerIntervalId = null;
 let timerRunning = false;
 let lastElapsedMs = 0;
 let currentPlayer = 'user';
 let stats = loadStats();
+let reasoningTrail = [];
 
 // Set initial CSS grid variables
 document.documentElement.style.setProperty('--grid-cols', size);
@@ -97,6 +101,8 @@ async function newGame() {
     setAiThinking(false);
     currentPlayer = 'user';
     stopTimer(true);
+    resetReasoningPanel();
+    pushReasoning('Board reset. Ready for a fresh run.', 'info');
     await renderGrid(size);
     await plantMines(numMines, size);
 }
@@ -231,14 +237,25 @@ async function getBoardState() {
 async function aiMakeMove() {
     if (hasWon || hasLost) return false;
     if (!timerRunning) startTimer();
+    pushReasoning('Scanning current board constraints...', 'thought');
     const boardState = await getBoardState();
     const result = await aiPlay(boardState);
     const moves = normalizeMoves(result);
+    consumeReasoning(result, moves);
+
+    if (!moves.length) {
+        pushReasoning('No deterministic move found in this turn.', 'info');
+        return true;
+    }
+
+    pushReasoning(`Planned moves: ${moves.length}. Executing sequentially.`, 'action');
     for (const move of moves) {
         if (hasWon || hasLost) break;
         if (move.decision === 'O') {
+            pushReasoning(`Open cell (${move.row}, ${move.col}).`, 'action');
             await handleCellClick(move.row, move.col);
         } else if (move.decision === 'F') {
+            pushReasoning(`Flag cell (${move.row}, ${move.col}) as mine.`, 'action');
             await handleCellRightClick(move.row, move.col, new MouseEvent('contextmenu'));
         }
     }
@@ -259,10 +276,12 @@ function startAiAutoplay() {
     if (aiAutoplayActive) return;
     aiAutoplayActive = true;
     currentPlayer = 'ai';
+    pushReasoning('Autoplay started. AI is now controlling moves.', 'info');
     const tick = async () => {
         if (!aiAutoplayActive || hasWon || hasLost) {
             aiAutoplayActive = false;
             setAiThinking(false);
+            pushReasoning('Autoplay stopped.', 'info');
             return;
         }
         try {
@@ -272,6 +291,7 @@ function startAiAutoplay() {
             console.error('AI autoplay stopped due to error:', err);
             aiAutoplayActive = false;
             setAiThinking(false);
+            pushReasoning(`AI error: ${err.message}`, 'info');
             return;
         }
         setAiThinking(false);
@@ -283,10 +303,13 @@ function startAiAutoplay() {
 function setAiThinking(isThinking) {
     if (isThinking) {
         aiPlayButton.textContent = 'Thinking...';
+        setReasoningStatus('AI is reasoning on constraints...');
     } else if (aiAutoplayActive) {
         aiPlayButton.textContent = 'AI Playing';
+        setReasoningStatus('AI active. Waiting for next move cycle...');
     } else {
         aiPlayButton.textContent = aiButtonDefaultLabel;
+        setReasoningStatus('Idle. Start AI Play to see its decision trail.');
     }
 }
 
@@ -325,7 +348,66 @@ function finalizeGame(outcome) {
     aiAutoplayActive = false;
     setAiThinking(false);
     const elapsed = lastElapsedMs;
+    pushReasoning(`Game finished: ${currentPlayer.toUpperCase()} ${outcome.toUpperCase()} in ${formatMs(elapsed)}.`, 'info');
     recordResult(currentPlayer, difficultySelect.value, outcome, elapsed);
+}
+
+function setReasoningStatus(text) {
+    if (reasoningStatus) reasoningStatus.textContent = text;
+}
+
+function resetReasoningPanel() {
+    reasoningTrail = [];
+    if (reasoningList) reasoningList.innerHTML = '';
+    setReasoningStatus('Idle. Start AI Play to see its decision trail.');
+}
+
+function pushReasoning(text, kind = 'thought') {
+    if (!reasoningList) return;
+    const line = String(text || '').trim();
+    if (!line) return;
+    reasoningTrail.push({ line, kind });
+    if (reasoningTrail.length > MAX_REASONING_LINES) {
+        reasoningTrail = reasoningTrail.slice(-MAX_REASONING_LINES);
+    }
+    renderReasoningTrail();
+}
+
+function renderReasoningTrail() {
+    if (!reasoningList) return;
+    reasoningList.innerHTML = reasoningTrail
+        .map(item => `<li class="reasoning-item ${item.kind}">${escapeHtml(item.line)}</li>`)
+        .join('');
+}
+
+function consumeReasoning(result, moves) {
+    if (!result) return;
+
+    if (typeof result.planSummary === 'string' && result.planSummary.trim()) {
+        pushReasoning(result.planSummary.trim(), 'thought');
+    }
+
+    if (Array.isArray(result.reasoningSteps)) {
+        result.reasoningSteps
+            .map(step => (typeof step === 'string' ? step.trim() : ''))
+            .filter(Boolean)
+            .slice(0, 6)
+            .forEach(step => pushReasoning(step, 'thought'));
+        return;
+    }
+
+    const openCount = moves.filter(move => move.decision === 'O').length;
+    const flagCount = moves.filter(move => move.decision === 'F').length;
+    pushReasoning(`Heuristic summary: ${openCount} open and ${flagCount} flag moves selected.`, 'thought');
+}
+
+function escapeHtml(text) {
+    return text
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
 }
 
 function defaultStats() {
@@ -415,4 +497,5 @@ function formatMs(ms) {
 }
 
 updateStatsUI();
+resetReasoningPanel();
 
